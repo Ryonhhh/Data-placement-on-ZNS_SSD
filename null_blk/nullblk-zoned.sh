@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [ $# != 6 ]; then
-        echo "Usage: $0 <sect size (B)> <zone size (MB)> <nr conv zones> <nr seq zones> <zone_max_active> <zone_max_open>"
+if [ $# != 4 ]; then
+        echo "Usage: $0 <sect size (B)> <zone size (MB)> <nr conv zones> <nr seq zones>"
         exit 1
 fi
 
@@ -16,8 +16,6 @@ function create_zoned_nullb()
         local zs=$2
         local nr_conv=$3
         local nr_seq=$4
-	local zma=$5
-	local zmo=$6
 
         cap=$(( zs * (nr_conv + nr_seq) ))
 
@@ -39,8 +37,6 @@ function create_zoned_nullb()
         echo 1 > "$dev"/memory_backed
         echo 1 > "$dev"/zoned
         
-	echo $zma > "$dev"/zone_max_active
-	echo $zmo > "$dev"/zone_max_open
         echo $cap > "$dev"/size
         echo $zs > "$dev"/zone_size
         echo $nr_conv > "$dev"/zone_nr_conv
@@ -52,5 +48,5 @@ function create_zoned_nullb()
         echo "$nid"
 }
 
-nulldev=$(create_zoned_nullb $1 $2 $3 $4 $5 $6)
+nulldev=$(create_zoned_nullb $1 $2 $3 $4)
 echo "Created /dev/nullb$nulldev"

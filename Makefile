@@ -1,18 +1,16 @@
 CC      =g++
-CFLAGS  =-g -Wall
-LDFLAGS =-L/usr/lib/libzbd.so
+CFLAGS  =-g -Wall -static
+LDFLAGS =-L /home/wls/Data-placement-on-ZNS_SSD/libzbd-2.0.3/lib/.libs/
 LIBS    =-lzbd
 OBJS    =main.o zns_controller.o
-TARGET=Simulation
+TARGET  =main
 
-$(TARGET): $(OBJS)
-	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
+all: main
 
-main.o:zns_controller.h main.cc
-zns_controller.o:zns_controller.cc zns_controller.h
+main: main.cc zns_controller.cc zns_controller.h
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS) $(LIBS)
 
-all: $(TARGET)
 
 clean:
-	rm -f *.o
-	rm -f $(TARGET)
+	rm -f ./*.o
+	rm -f ./main
