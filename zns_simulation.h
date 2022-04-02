@@ -5,9 +5,12 @@
 #include "zns_controller.h"
 #include "workload.h"
 
-struct Page{
-  
-};
+typedef struct Page{
+  int key_size;
+  int *key;
+  int value_size;
+  int *value;
+}Page;
 
 class ZNS_Simulation {
   ZNS_SIM* zns_sim;
@@ -26,10 +29,17 @@ class ZNS_Simulation {
   void initialize();
   void generate_workload(int seq_ram);
   int write_block(char* page_in, int zone_id, int size);
-  char** data2pages(int* key, int* value_size, int len);
+  char* data2page(int* key, int* value_size);
   void get_zone_garbage_rate();
   void request_workload();
   void test();
+
+  //alorithm
+  void myInsert(char *page);
+  void myUpdate_Delete(int key, int value_size);
+  void myGarbageCollection();
+  void myGcDetect();
+
 };
 
 #endif

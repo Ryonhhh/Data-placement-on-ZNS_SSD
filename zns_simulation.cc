@@ -27,10 +27,10 @@ void ZNS_Simulation::initialize() {
   zone_lifetime_map = (int *)malloc(sizeof(int) * zns_sim->get_zone_number());
   empty_rate = (float *)malloc(sizeof(float) * zns_sim->get_zone_number());
   garbage_rate = (float *)malloc(sizeof(float) * zns_sim->get_zone_number());
-  for (int i = 0; i < zns_sim->get_block_number(); i++) {
+  for (int i = 0; i < (int)zns_sim->get_block_number(); i++) {
     block_valid_map[i] = 0;
   }
-  for (int i = 0; i < zns_sim->get_zone_number(); i++) {
+  for (int i = 0; i < (int)zns_sim->get_zone_number(); i++) {
     zone_lifetime_map[i] = 0;
     empty_rate[i] = 1;
     garbage_rate[i] = 0;
@@ -75,7 +75,7 @@ int ZNS_Simulation::write_block(char *page_in, int zone_id, int size) {
 
 void ZNS_Simulation::get_zone_garbage_rate() {
   int block_per_zone = zns_sim->get_block_number() / zns_sim->get_zone_number();
-  for (int i = 0; i < zns_sim->get_zone_number(); i++) {
+  for (int i = 0; i < (int)zns_sim->get_zone_number(); i++) {
     int tol = 0, sum = 0;
     for (int j = 0; j < block_per_zone; j++) {
       tol++;
@@ -85,25 +85,34 @@ void ZNS_Simulation::get_zone_garbage_rate() {
   }
 }
 
-char **ZNS_Simulation::data2pages(int *key, int *value_size, int len) {
-  char **pages;
-  int tol_size = 0, tol_page = 0;
+char *ZNS_Simulation::data2page(int *key, int *value_size, int len) {
+  char *page;
   for (int i = 0; i < len; i++) {
-    tol_size += sizeof(key[i]) + value_size[i];
   }
-  tol_page = tol_size / BLOCK_SIZE;
-  pages = (char **)malloc(sizeof(char *) * tol_page);
+  return page;
 }
 
 void ZNS_Simulation::request_workload() {
-  FILE *fp = fopen(FILE_PATH, "r");
-  int cnt, OP, key_read, value_size_read;
-  int *key, *value_size;
+  int cap = 0, OP, key_read, value_size_read, cnt = 0, tol_page;
+  int key[MAX_KV_PER_BLOCK], value_size[MAX_KV_PER_BLOCK];
+
+  ifstream inFile;
+  inFile.open(FILE_PATH, ifstream::in);
+  while (1) {
+    inFile >> OP >> key_read >> value_size_read;
+    if (cap + sizeof(int) * 3 + value_size_read > BLOCK_SIZE) {
+      char *pages2zns = data2page(key, value, cnt - 1);
+      cnt = cap = 0;
+      myInsert(pages2zns);
+    }
+    key[cnt] = key_read;
+    value_size[cnt] = value_size_read;
+    cnt++;
+    cap += sizeof(int) * 3 + value_size_read;
+  }
 }
 
 void ZNS_Simulation::test() {
-  
-
   /*int size = 4ul << 10;
   char *write_buffer = reinterpret_cast<char *>(memalign(4096, size));
   assert(write_buffer != nullptr);
@@ -127,3 +136,5 @@ void ZNS_Simulation::test() {
   zone_sim[1].print_zone_cond();
   cout << zone_sim[1].get_zone_wp() << endl;*/
 }
+
+void ZNS_Simulation::myInsert(char *page) {}

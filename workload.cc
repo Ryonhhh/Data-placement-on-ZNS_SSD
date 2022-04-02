@@ -16,7 +16,8 @@ Workload_Creator::Workload_Creator(int length) {
   seq_or_ram = 0;
   for (int i = 0; i < length; i++)
     outFile << std::to_string(ADD_KV) << ',' << std::to_string(rand() % MAX_KEY)
-            << ',' << std::to_string(rand() % MAX_VALUE_SIZE + 1) << endl;
+            << ',' << std::to_string(((rand() % MAX_VALUE_SIZE / 4) + 1) * 4)
+            << endl;
   outFile.close();
 }
 
@@ -40,7 +41,8 @@ Workload_Creator::Workload_Creator(int length, float hot_rate) {
         OP = MODIFY_KV;
     }
     outFile << std::to_string(OP) << ',' << std::to_string(rand() % MAX_KEY)
-            << ',' << std::to_string(rand() % MAX_VALUE_SIZE + 1) << endl;
+            << ',' << std::to_string(((rand() % MAX_VALUE_SIZE / 4) + 1) * 4)
+            << endl;
   }
   outFile.close();
 }

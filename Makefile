@@ -14,3 +14,4 @@ main: main.cc zns_controller.cc zns_simulation.cc workload.cc
 clean:
 	rm -f ./*.o
 	rm -f ./main
+	rm -f ./zns_controller
