@@ -1,26 +1,17 @@
-#include"zns_controller.h"
-#include"parameter.h"
-#include<iostream>
+#include <iostream>
+
+#include "zns_simulation.h"
+
 using namespace std;
 
-int main(){
-    ZNS_sim *zns_sim;
-    zns_sim = new ZNS_sim();
-    //zns_sim->print_zns_info();
-
-    ZONE_sim zone_arr[ZONE_NUMBER];
-    for(int i = 0; i < zns_sim->get_zone_number(); i++)
-        zone_arr[i].set_zone(zns_sim->get_dev_id(), i, zns_sim->get_zone_size());
-    
-    //zone_arr[0].print_zone_info();cout<<endl;
-    //zone_arr[0].print_zone_info();cout<<endl;
-    zone_arr[0].reset_zone();
-    zone_arr[0].open_zone();
-    //zone_arr[0].print_zone_info();cout<<endl;
-    zone_arr[0].finish_zone();
-    zone_arr[0].print_zone_info();cout<<endl;
-    zone_arr[0].reset_zone();
-
-    zns_sim->close_zns_dev();
-    return 0;
+int main() {
+  ZNS_Simulation zns_simulation;
+  cout << "start to initialize ZNS_SSD" << endl;
+  zns_simulation.initialize();
+  cout << "finish initialize!" << endl;
+  cout << "creating workload..." << endl;
+  zns_simulation.generate_workload(RAM);
+  cout << "finish generating workload!" << endl;
+  //zns_simulation.test();
+  return 0;
 }
