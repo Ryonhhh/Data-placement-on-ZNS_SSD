@@ -1,6 +1,7 @@
 #include "zns_simulation.h"
 
 #include <string.h>
+#include<cmath>
 
 #include <fstream>
 #include <sstream>
@@ -22,18 +23,24 @@ ZNS_Simulation::ZNS_Simulation() {
 }
 
 void ZNS_Simulation::initialize() {
-  block_valid_map = (int *)malloc(sizeof(int) * zns_sim->get_block_number());
-  gc_queue = (int *)malloc(sizeof(int) * gl);
-  zone_lifetime_map = (int *)malloc(sizeof(int) * zns_sim->get_zone_number());
-  empty_rate = (float *)malloc(sizeof(float) * zns_sim->get_zone_number());
-  garbage_rate = (float *)malloc(sizeof(float) * zns_sim->get_zone_number());
-  for (int i = 0; i < (int)zns_sim->get_block_number(); i++) {
+  zone_number = zns_sim->get_zone_number();
+  block_number = zns_sim->get_block_number();
+
+  block_valid_map = (int *)malloc(sizeof(int) * block_number);
+  gc_queue = (int *)malloc(sizeof(int) * zone_number);
+  page_lifetime_map = (float *)malloc(sizeof(float) * block_number);
+  zone_lifetime_map = (float *)malloc(sizeof(float) * zone_number);
+  key_lifetime_map = (int *)malloc(sizeof(int) * MAX_KEY);
+  empty_rate = (float *)malloc(sizeof(float) * zone_number);
+  garbage_rate = (float *)malloc(sizeof(float) * zone_number);
+  for (int i = 0; i < (int)block_number; i++) {
     block_valid_map[i] = 0;
   }
-  for (int i = 0; i < (int)zns_sim->get_zone_number(); i++) {
-    zone_lifetime_map[i] = 0;
+  for (int i = 0; i < zone_number; i++) {
+    zone_lifetime_map[i] = -1;
     empty_rate[i] = 1;
     garbage_rate[i] = 0;
+    gc_queue[i] = 0;
   }
 }
 
@@ -74,8 +81,8 @@ int ZNS_Simulation::write_block(char *page_in, int zone_id, int size) {
 }
 
 void ZNS_Simulation::get_zone_garbage_rate() {
-  int block_per_zone = zns_sim->get_block_number() / zns_sim->get_zone_number();
-  for (int i = 0; i < (int)zns_sim->get_zone_number(); i++) {
+  int block_per_zone = block_number / zone_number;
+  for (int i = 0; i < (int)zone_number; i++) {
     int tol = 0, sum = 0;
     for (int j = 0; j < block_per_zone; j++) {
       tol++;
@@ -85,9 +92,25 @@ void ZNS_Simulation::get_zone_garbage_rate() {
   }
 }
 
+void ZNS_Simulation::get_zone_empty_rate() {
+  for (int i = 0; i < (int)zone_number; i++)
+    empty_rate[i] = zone_sim[i].get_empty_rate();
+}
+
 char *ZNS_Simulation::data2page(int *key, int *value_size, int len) {
-  char *page;
+  char *page = reinterpret_cast<char *>(memalign(4096, 4ul << 10));
+  assert(page != nullptr);
+  int adr = 0;
+  int key_size = sizeof(int);
   for (int i = 0; i < len; i++) {
+    memcpy(page + adr, &key_size, sizeof(key_size));
+    adr += sizeof(key_size);
+    memcpy(page + adr, &key[i], sizeof(key[i]));
+    adr += sizeof(key[i]);
+    memcpy(page + adr, &value_size[i], sizeof(value_size[i]));
+    adr += sizeof(value_size[i]);
+    memcpy(page + adr, &value_size[i], value_size[i]);
+    adr += value_size[i];
   }
   return page;
 }
@@ -100,17 +123,106 @@ void ZNS_Simulation::request_workload() {
   inFile.open(FILE_PATH, ifstream::in);
   while (1) {
     inFile >> OP >> key_read >> value_size_read;
-    if (cap + sizeof(int) * 3 + value_size_read > BLOCK_SIZE) {
-      char *pages2zns = data2page(key, value, cnt - 1);
-      cnt = cap = 0;
-      myInsert(pages2zns);
+    if (cap + sizeof(int) * 3 + value_size_read > BLOCK_SIZE ||
+        OP == MODIFY_KV || OP == DELETE_KV) {
+      if (cnt != 0) {
+        char *pages2zns = data2page(key, value_size, cnt - 1);
+        myInsert(pages2zns, key, cnt - 1);
+        cnt = cap = 0;
+      }
+      if (OP == MODIFY_KV) {
+        myUpdate_Delete(key_read, value_size_read);
+      } else if (OP == DELETE_KV) {
+        myUpdate_Delete(key_read, 0);
+      }
     }
-    key[cnt] = key_read;
-    value_size[cnt] = value_size_read;
-    cnt++;
-    cap += sizeof(int) * 3 + value_size_read;
+    if (OP == ADD_KV) {
+      key[cnt] = key_read;
+      value_size[cnt] = value_size_read;
+      cnt++;
+      cap += sizeof(int) * 3 + value_size_read;
+    }
   }
 }
+
+float ZNS_Simulation::lifetimeVarience(int zone_id) {
+  float sum = 0, avg = 0;
+  for (int i = 0; i < block_number / zone_number; i++)
+    sum += page_lifetime_map[zone_id * block_number / zone_number + i];
+  avg = sum / (block_number / zone_number);
+  sum = 0;
+  for (int i = 0; i < block_number / zone_number; i++)
+    sum +=
+        sqrt(page_lifetime_map[zone_id * block_number / zone_number + i] - avg);
+  sum /= block_number / zone_number;
+  return sum;
+}
+
+float ZNS_Simulation::get_page_lifetime(int *key, int len) {
+  float lifetime = 1;
+  for (int i = 0; i < len; i++) {
+    if (lifetime > 1 / (float)key_lifetime_map[key[i]])
+      lifetime = 1 / (float)key_lifetime_map[key[i]];
+  }
+  return lifetime;
+}
+
+void ZNS_Simulation::refreshLifetime(int zone_id, int *key, int len) {}
+
+void ZNS_Simulation::myGcDetect() {
+  int gczone = 0;
+  get_zone_empty_rate();
+  get_zone_garbage_rate();
+  for (int i = 0; i < (int)zone_number; i++) {
+    if (gc_queue[i] == 0) {
+      if (garbage_rate[i] > sg)
+        gc_queue[i] = 1;
+      else if (empty_rate[i] > se && lifetimeVarience(i) > sl)
+        gc_queue[i] = 1;
+    }
+  }
+  for (int j; j < (int)zone_number; j++) gczone += gc_queue[j];
+  if (gczone >= gl) myGarbageCollection();
+}
+
+void ZNS_Simulation::myInsert(char *page, int *key, int len) {
+  int zone_in, szone = 0;
+  for (int i = 0; i < zone_number; i++)
+    if (zone_lifetime_map[i] < 0) szone++;
+  if (szone < sz * zone_number) {
+    get_zone_empty_rate();
+    zone_in = 0;
+    float min = 1;
+    for (int i = 0; i < zone_number; i++) {
+      if (min > empty_rate[i]) {
+        zone_in = i;
+        min = empty_rate[i];
+      }
+    }
+  } else {
+    float pageLifetime = get_page_lifetime(key, len), delat = 100000;
+    for (int i = 0; i < zone_number; i++) {
+      if (gc_queue[i] == 0) {
+        zone_in = i;
+        break;
+      }
+    }
+    for (int i = 0; i < zone_number; i++) {
+      if (delat > fabs(pageLifetime - zone_lifetime_map[i]) &&
+          gc_queue[i] == 0) {
+        zone_in = i;
+        delat = fabs(pageLifetime - zone_lifetime_map[i]);
+      }
+    }
+  }
+  int flag = write_block(page, zone_in, BLOCK_SIZE);
+  assert(flag == 0);
+  refreshLifetime(zone_in, key, len);
+  myGcDetect();
+}
+
+void ZNS_Simulation::myUpdate_Delete(int key, int value_size) {}
+void ZNS_Simulation::myGarbageCollection() {}
 
 void ZNS_Simulation::test() {
   /*int size = 4ul << 10;
@@ -136,5 +248,3 @@ void ZNS_Simulation::test() {
   zone_sim[1].print_zone_cond();
   cout << zone_sim[1].get_zone_wp() << endl;*/
 }
-
-void ZNS_Simulation::myInsert(char *page) {}

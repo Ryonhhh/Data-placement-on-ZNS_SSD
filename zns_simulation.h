@@ -2,25 +2,21 @@
 #define zns_simulation_H
 
 #include "parameter.h"
-#include "zns_controller.h"
 #include "workload.h"
-
-typedef struct Page{
-  int key_size;
-  int *key;
-  int value_size;
-  int *value;
-}Page;
+#include "zns_controller.h"
 
 class ZNS_Simulation {
   ZNS_SIM* zns_sim;
   ZONE_SIM* zone_sim;
   BLOCK_SIM* block_sim;
   Workload_Creator* workload;
-  int* zone_lifetime_map;
-  int* zone_meta_map;
+  int zone_number;
+  int block_number;
   int* block_valid_map;
   int* gc_queue;
+  int* key_lifetime_map;
+  float* page_lifetime_map;
+  float* zone_lifetime_map;
   float* empty_rate;
   float* garbage_rate;
 
@@ -29,17 +25,24 @@ class ZNS_Simulation {
   void initialize();
   void generate_workload(int seq_ram);
   int write_block(char* page_in, int zone_id, int size);
-  char* data2page(int* key, int* value_size);
+  char* data2page(int* key, int* value_size, int len);
   void get_zone_garbage_rate();
+  void get_zone_empty_rate();
   void request_workload();
-  void test();
 
-  //alorithm
-  void myInsert(char *page);
-  void myUpdate_Delete(int key, int value_size);
+  // ZNS_aware_alorithm
+  float lifetimeVarience(int zone_id);
+  float get_page_lifetime(int* key, int len);
+  void refreshLifetime(int zone_id, int* key, int len);
+  void myInsert(char* page, int* key, int len);
+  void myUpdate_Delete(
+      int key,
+      int value_size);  // delete: value_size=0, update: value_size != 0
   void myGarbageCollection();
   void myGcDetect();
 
+  // test
+  void test();
 };
 
 #endif
