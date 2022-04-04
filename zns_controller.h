@@ -14,13 +14,11 @@ using namespace std;
 class BLOCK_SIM {
   unsigned long long block_id;
   unsigned long long start;
-  int status;  // 0 = empty, 1 = valid, -1 = invalid
 
  public:
   BLOCK_SIM(){};
   void set_block(unsigned long long _block_id, int block_size);
-  int get_block_status();
-  void set_block_status(int _status);
+  unsigned long long get_block_start();
 };
 
 class ZONE_SIM {

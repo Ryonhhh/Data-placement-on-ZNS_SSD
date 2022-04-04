@@ -5,12 +5,11 @@ using namespace std;
 void BLOCK_SIM::set_block(unsigned long long block_id, int block_size) {
   this->block_id = block_id;
   this->start = block_id * block_size;
-  this->status = 0;
 }
 
-int BLOCK_SIM::get_block_status() { return this->status; }
-
-void BLOCK_SIM::set_block_status(int status) { this->status = status; }
+unsigned long long BLOCK_SIM::get_block_start(){
+  return this->start;
+}
 
 void ZONE_SIM::set_zone(int fd, int zone_id, unsigned long long capacity) {
   struct zbd_zone info;

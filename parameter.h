@@ -8,7 +8,7 @@
 #define se 0.9 //threshold of zone's empty rate
 #define sz 0.3 //threshold of lifetime_recorded zone's rate
 #define sl 10 ////threshold of zone's lifetime varience
-#define gl 5  // the maximun length of gc queue
+#define gl 2  // the maximun length of gc queue
 #define MAX_KEY 1000000
 #define MAX_VALUE_SIZE 2048
 #define MAX_WORKLOAD 1000000
