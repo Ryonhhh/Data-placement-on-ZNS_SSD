@@ -24,7 +24,7 @@ class ZNS_Simulation {
   ZNS_Simulation();
   void initialize();
   void generate_workload(int seq_ram);
-  int write_block(char* page_in, int zone_id, int size);
+  int write_block(char* page_in, int zone_id, int size, int block_id);
   char* data2page(int* key, int* value_size, int len);
   void get_zone_garbage_rate();
   void get_zone_empty_rate();
@@ -33,7 +33,7 @@ class ZNS_Simulation {
   // ZNS_aware_alorithm
   float lifetimeVarience(int zone_id);
   float get_page_lifetime(int* key, int len);
-  void refreshLifetime(int zone_id, int* key, int len);
+  void refreshLifetime(int zone_id, int* key, int len, int block_id, float pageLifetime);
   void myInsert(char* page, int* key, int len);
   void myUpdate_Delete(
       int key,

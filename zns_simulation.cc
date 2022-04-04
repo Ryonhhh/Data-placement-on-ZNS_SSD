@@ -51,7 +51,7 @@ void ZNS_Simulation::generate_workload(int seq_ram) {
     workload = new Workload_Creator(MAX_WORKLOAD, HOT_RATE);
 }
 
-int ZNS_Simulation::write_block(char *page_in, int zone_id, int size) {
+int ZNS_Simulation::write_block(char *page_in, int zone_id, int size, int block_id) {
   int cond = zone_sim[zone_id].get_zone_cond();
   if (cond != ZBD_ZONE_COND_EMPTY && cond != ZBD_ZONE_COND_EXP_OPEN &&
       cond != ZBD_ZONE_COND_IMP_OPEN) {
@@ -74,6 +74,7 @@ int ZNS_Simulation::write_block(char *page_in, int zone_id, int size) {
          << " end: " << start + capacity << endl;
     return 0;
   }
+  block_id = zone_id * block_number + (wp - start) / BLOCK_SIZE;
   int ret = pwrite(fd, page_in, size, wp);
   assert(ret == size);
 
@@ -167,7 +168,13 @@ float ZNS_Simulation::get_page_lifetime(int *key, int len) {
   return lifetime;
 }
 
-void ZNS_Simulation::refreshLifetime(int zone_id, int *key, int len) {}
+void ZNS_Simulation::refreshLifetime(int zone_id, int *key, int len,
+                                     int block_id, float pageLifetime) {
+  for (int i = 0; i < len; i++) {
+    key_lifetime_map[key[i]]++;
+  }
+  page_lifetime_map[block_id] = pageLifetime;
+}
 
 void ZNS_Simulation::myGcDetect() {
   int gczone = 0;
@@ -186,7 +193,8 @@ void ZNS_Simulation::myGcDetect() {
 }
 
 void ZNS_Simulation::myInsert(char *page, int *key, int len) {
-  int zone_in, szone = 0;
+  int zone_in, szone = 0, block_id;
+  float pageLifetime = get_page_lifetime(key, len);
   for (int i = 0; i < zone_number; i++)
     if (zone_lifetime_map[i] < 0) szone++;
   if (szone < sz * zone_number) {
@@ -200,29 +208,35 @@ void ZNS_Simulation::myInsert(char *page, int *key, int len) {
       }
     }
   } else {
-    float pageLifetime = get_page_lifetime(key, len), delat = 100000;
+    float delta = 100000;
     for (int i = 0; i < zone_number; i++) {
-      if (gc_queue[i] == 0) {
+      if (gc_queue[i] == 0) 
         zone_in = i;
         break;
       }
-    }
     for (int i = 0; i < zone_number; i++) {
-      if (delat > fabs(pageLifetime - zone_lifetime_map[i]) &&
+      if (delta > fabs(pageLifetime - zone_lifetime_map[i]) &&
           gc_queue[i] == 0) {
         zone_in = i;
-        delat = fabs(pageLifetime - zone_lifetime_map[i]);
+        delta = fabs(pageLifetime - zone_lifetime_map[i]);
       }
     }
   }
-  int flag = write_block(page, zone_in, BLOCK_SIZE);
+  int flag = write_block(page, zone_in, BLOCK_SIZE, block_id);
   assert(flag == 0);
-  refreshLifetime(zone_in, key, len);
+  refreshLifetime(zone_in, key, len, block_id, pageLifetime);
   myGcDetect();
 }
 
-void ZNS_Simulation::myUpdate_Delete(int key, int value_size) {}
-void ZNS_Simulation::myGarbageCollection() {}
+void ZNS_Simulation::myUpdate_Delete(int key, int value_size) {
+  int block_id;
+  for(int i=0;i<block_number;i++){
+    
+  }
+}
+void ZNS_Simulation::myGarbageCollection() {
+
+}
 
 void ZNS_Simulation::test() {
   /*int size = 4ul << 10;
