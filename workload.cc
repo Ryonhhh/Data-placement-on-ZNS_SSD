@@ -33,16 +33,19 @@ Workload_Creator::Workload_Creator(int length, float hot_rate) {
     if (bitmap[key] == 0) {
       bitmap[key] = 1;
       OP = ADD_KV;
+      outFile << OP << ' ' << key << ' '
+              << ((rand() % MAX_VALUE_SIZE / 4) + 1) * 4 << endl;
     } else {
       if (rand() % 3 == 0) {
         OP = DELETE_KV;
         bitmap[i] = 0;
-      } else
+        outFile << OP << ' ' << key << ' ' << 0 << endl;
+      } else {
         OP = MODIFY_KV;
+        outFile << OP << ' ' << key << ' '
+                << ((rand() % MAX_VALUE_SIZE / 4) + 1) * 4 << endl;
+      }
     }
-    outFile << std::to_string(OP) << ',' << std::to_string(rand() % MAX_KEY)
-            << ',' << std::to_string(((rand() % MAX_VALUE_SIZE / 4) + 1) * 4)
-            << endl;
   }
   outFile.close();
 }

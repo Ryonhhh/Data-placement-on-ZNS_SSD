@@ -16,7 +16,7 @@ class ZNS_Simulation {
   int* block_valid_map;
   int* gc_queue;
   int* key_lifetime_map;
-  float* page_lifetime_map;
+  int* page_lifetime_map;
   float* zone_lifetime_map;
   float* empty_rate;
   float* garbage_rate;
@@ -33,9 +33,9 @@ class ZNS_Simulation {
 
   // ZNS_aware_alorithm
   float lifetimeVarience(int zone_id);
-  float get_page_lifetime(int* key, int len);
-  void refreshLifetime(int zone_id, int* key, int len, int block_id, float pageLifetime);
-  void GC_insert(char *page, float lifetime);
+  int get_page_lifetime(int* key, int len);
+  void refreshLifetime(int zone_id, int* key, int len, int block_id, int pageLifetime);
+  void GC_insert(char *page, int lifetime);
   void myInsert(char* page, int* key, int len);
   void myUpdate_Delete(
       int key,

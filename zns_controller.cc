@@ -21,7 +21,7 @@ void ZONE_SIM::set_zone(int fd, int zone_id, unsigned long long capacity) {
   this->fd = fd;
   this->zone_id = zone_id;
   this->start = zone_id * capacity;
-  this->capacity = capacity;
+  this->capacity = info.capacity;
   this->type = info.type;
 
   reset_zone();
@@ -132,7 +132,7 @@ void ZONE_SIM::finish_zone() {
 }
 
 float ZONE_SIM::get_empty_rate() {
-  return (float)(get_zone_wp() - start) / (float)capacity;
+  return 1 - (float)(get_zone_wp() - start) / (float)capacity;
 }
 
 ZNS_SIM::ZNS_SIM() {

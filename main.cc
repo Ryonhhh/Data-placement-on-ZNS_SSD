@@ -10,8 +10,11 @@ int main() {
   zns_simulation.initialize();
   cout << "finish initialize!" << endl;
   cout << "creating workload..." << endl;
-  zns_simulation.generate_workload(RAM);
+  //zns_simulation.generate_workload(RAM);
   cout << "finish generating workload!" << endl;
-  //zns_simulation.test();
+  cout << "start simulation..." << endl;
+  zns_simulation.request_workload();
+  cout << "finish  simulation!" << endl;
+  // zns_simulation.test();
   return 0;
 }
