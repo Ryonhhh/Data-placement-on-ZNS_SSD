@@ -82,7 +82,6 @@ int ZNS_Simulation::write_block(char *page_in, int zone_id, int size,
     return 0;
   }
   block_id = zone_id * block_number + (wp - start) / BLOCK_SIZE;
-  cout << block_id << endl;
   int ret = pwrite(fd, page_in, size, wp);
   assert(ret == size);
 
@@ -228,11 +227,9 @@ void ZNS_Simulation::myInsert(char *page, int *key, int len) {
     get_zone_empty_rate();
     float max = 0;
     for (int i = 0; i < zone_number; i++) {
-      cout<<"empty rate"<<empty_rate[i];
       if (max < empty_rate[i]) {
         zone_in = i;
         max = empty_rate[i];
-        cout << "max:" << max << " id: " << zone_in << endl;
       }
     }
   } else {
@@ -262,12 +259,12 @@ void ZNS_Simulation::myUpdate_Delete(int key_op, int value_size_op) {
     while (offset < block_sim[i].get_block_start() + BLOCK_SIZE) {
       ret = pread(fd, buf, sizeof(int), offset);
       memcpy(&key_size_read, buf, sizeof(int));
-      // cout<<key_size_read<<endl;
       if (key_size_read != sizeof(int)) break;
       offset += sizeof(int);
 
       ret = pread(fd, &key_read, key_size_read, offset);
       assert(ret == key_size_read);
+      cout<<key_read<<" ";
       if (key_read == key_op) {
         flag = 1;
         block_id = i;

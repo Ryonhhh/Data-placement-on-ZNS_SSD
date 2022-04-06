@@ -20,7 +20,7 @@ void ZONE_SIM::set_zone(int fd, int zone_id, unsigned long long capacity) {
 
   this->fd = fd;
   this->zone_id = zone_id;
-  this->start = zone_id * capacity;
+  this->start = info.start;
   this->capacity = info.capacity;
   this->type = info.type;
 
@@ -53,7 +53,7 @@ unsigned int ZONE_SIM::get_zone_type() { return type; }
 
 unsigned long long ZONE_SIM::get_zone_wp() {
   struct zbd_zone info;
-  unsigned int nr_zones = 0;
+  unsigned int nr_zones = 1;
   int flag =
       zbd_report_zones(fd, start, capacity, ZBD_RO_ALL, &info, &nr_zones);
   assert(flag == 0);
@@ -132,6 +132,8 @@ void ZONE_SIM::finish_zone() {
 }
 
 float ZONE_SIM::get_empty_rate() {
+  //cout<<" wp "<<this->get_zone_wp()<<endl;
+  //print_zone_info();
   return 1 - (float)(get_zone_wp() - start) / (float)capacity;
 }
 

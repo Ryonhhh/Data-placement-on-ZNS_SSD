@@ -11,7 +11,7 @@
 #define gl 2  // the maximun length of gc queue
 #define MAX_KEY 1000000
 #define MAX_VALUE_SIZE 2048
-#define MAX_WORKLOAD 1000000
+#define MAX_WORKLOAD 10000
 #define HOT_RATE 0.2
 
 enum WORKLOAD { SEQ, RAM };

@@ -9,9 +9,9 @@ int main() {
   cout << "start to initialize ZNS_SSD" << endl;
   zns_simulation.initialize();
   cout << "finish initialize!" << endl;
-  cout << "creating workload..." << endl;
-  //zns_simulation.generate_workload(RAM);
-  cout << "finish generating workload!" << endl;
+  // cout << "creating workload..." << endl;
+  // zns_simulation.generate_workload(RAM);
+  // cout << "finish generating workload!" << endl;
   cout << "start simulation..." << endl;
   zns_simulation.request_workload();
   cout << "finish  simulation!" << endl;
