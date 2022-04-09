@@ -38,7 +38,7 @@ Workload_Creator::Workload_Creator(int length, float hot_rate) {
     } else {
       if (rand() % 3 == 0) {
         OP = DELETE_KV;
-        bitmap[i] = 0;
+        bitmap[key] = 0;
         outFile << OP << ' ' << key << ' ' << 0 << endl;
       } else {
         OP = MODIFY_KV;

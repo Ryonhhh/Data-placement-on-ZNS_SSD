@@ -20,7 +20,7 @@ void ZONE_SIM::set_zone(int fd, int zone_id, unsigned long long capacity) {
 
   this->fd = fd;
   this->zone_id = zone_id;
-  this->start = info.start;
+  this->start = zone_id * capacity;
   this->capacity = info.capacity;
   this->type = info.type;
 
@@ -29,7 +29,7 @@ void ZONE_SIM::set_zone(int fd, int zone_id, unsigned long long capacity) {
 
 void ZONE_SIM::print_zone_info() {
   struct zbd_zone info;
-  unsigned int nr_zones = 0;
+  unsigned int nr_zones = 1;
   int flag =
       zbd_report_zones(fd, start, capacity, ZBD_RO_ALL, &info, &nr_zones);
   assert(flag == 0);
@@ -37,10 +37,10 @@ void ZONE_SIM::print_zone_info() {
   std::cout << " zone_id:  " << zone_id << std::endl;
   std::cout << " start:    " << info.start << std::endl;
   std::cout << " capacity: " << info.capacity << std::endl;
-  std::cout << " wp:       " << info.wp << std::endl;
-  std::cout << " flags:    " << info.flags << std::endl;
+  std::cout << " wp:       " << get_zone_wp() << std::endl;
+  std::cout << " flags:    " << get_zone_flags() << std::endl;
   std::cout << " type:     " << info.type << std::endl;
-  std::cout << " cond:     " << info.cond << std::endl;
+  std::cout << " cond:     " << get_zone_cond() << std::endl;
 }
 
 int ZONE_SIM::get_zone_id() { return zone_id; }

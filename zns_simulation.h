@@ -16,6 +16,7 @@ class ZNS_Simulation {
   int* block_valid_map;
   int* gc_queue;
   int* key_lifetime_map;
+  int* key_index;
   int* page_lifetime_map;
   float* zone_lifetime_map;
   float* empty_rate;
@@ -25,7 +26,7 @@ class ZNS_Simulation {
   ZNS_Simulation();
   void initialize();
   void generate_workload(int seq_ram);
-  int write_block(char* page_in, int zone_id, int size, int block_id);
+  int write_block(char* page_in, int zone_id, int size, int *block_id);
   char* data2page(int* key, int* value_size, int len);
   void get_zone_garbage_rate();
   void get_zone_empty_rate();
@@ -45,6 +46,7 @@ class ZNS_Simulation {
 
   // test
   void test();
+  void print_info();
 };
 
 #endif
