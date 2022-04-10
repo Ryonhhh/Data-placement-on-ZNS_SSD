@@ -15,6 +15,6 @@ int main() {
   cout << "start simulation..." << endl;
   zns_simulation.request_workload();
   cout << "finish  simulation!" << endl;
-  // zns_simulation.test();
+  zns_simulation.test();
   return 0;
 }

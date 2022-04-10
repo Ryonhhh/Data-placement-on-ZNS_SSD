@@ -10,5 +10,5 @@ class Workload_Creator {
 
  public:
   Workload_Creator(int length);
-  Workload_Creator(int length, float hot_rate);
+  Workload_Creator(int length, float hot_data_rate, float update_rate);
 };

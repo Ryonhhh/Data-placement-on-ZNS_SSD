@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include <fstream>
+#include <iomanip>
 #include <sstream>
 #include <vector>
 
@@ -23,6 +24,8 @@ ZNS_Simulation::ZNS_Simulation() {
 }
 
 void ZNS_Simulation::initialize() {
+  gc_flag = 0;
+
   zone_number = zns_sim->get_zone_number();
   block_number = zns_sim->get_block_number();
   block_per_zone = block_number / zone_number;
@@ -43,7 +46,7 @@ void ZNS_Simulation::initialize() {
     key_index[i] = -1;
   }
   for (int i = 0; i < (int)block_number; i++) {
-    block_valid_map[i] = 0;
+    block_valid_map[i] = BLOCK_EMPTY;
     page_lifetime_map[i] = -1;
   }
   for (int i = 0; i < zone_number; i++) {
@@ -58,7 +61,7 @@ void ZNS_Simulation::generate_workload(int seq_ram) {
   if (seq_ram == 0)
     workload = new Workload_Creator(MAX_WORKLOAD);
   else
-    workload = new Workload_Creator(MAX_WORKLOAD, HOT_RATE);
+    workload = new Workload_Creator(MAX_WORKLOAD, HOT_DATA_RATE, UPDATE_RATE);
 }
 
 int ZNS_Simulation::write_block(char *page_in, int zone_id, int size,
@@ -148,7 +151,7 @@ void ZNS_Simulation::request_workload() {
         OP == MODIFY_KV || OP == DELETE_KV) {
       if (cnt != 0) {
         char *pages2zns = data2page(key, value_size, cnt);
-        myInsert(pages2zns, key, cnt);
+        myInsert(pages2zns, key, cnt, ADD_KV);
         cnt = cap = 0;
       }
       if (OP == MODIFY_KV) {
@@ -193,10 +196,11 @@ int ZNS_Simulation::get_page_lifetime(int *key, int len) {
 }
 
 void ZNS_Simulation::refreshLifetime(int zone_id, int *key, int len,
-                                     int block_id, int pageLifetime) {
+                                     int block_id, int pageLifetime, int OP) {
   int cnt = 0;
+  block_valid_map[block_id] = BLOCK_VALID;
   for (int i = 0; i < len; i++) {
-    key_lifetime_map[key[i]]++;
+    if (OP == ADD_KV) key_lifetime_map[key[i]]++;
     key_index[key[i]] = block_id;
   }
   page_lifetime_map[block_id] = pageLifetime;
@@ -218,19 +222,21 @@ void ZNS_Simulation::myGcDetect() {
   get_zone_garbage_rate();
   for (int i = 0; i < (int)zone_number; i++) {
     if (gc_queue[i] == 0) {
-      if (garbage_rate[i] > sg)
+      if (garbage_rate[i] > sg) {
         gc_queue[i] = 1;
-      else if (empty_rate[i] > se && lifetimeVarience(i) > sl)
+      } else if (empty_rate[i] < se && lifetimeVarience(i) > sl) {
         gc_queue[i] = 1;
+      }
     }
   }
   for (int j = 0; j < (int)zone_number; j++) gczone += gc_queue[j];
-  if (gczone >= gl) myGarbageCollection();
+  if (gczone >= gl && gc_flag == 0) myGarbageCollection();
 }
 
-void ZNS_Simulation::myInsert(char *page, int *key, int len) {
+void ZNS_Simulation::myInsert(char *page, int *key, int len, int OP) {
   int zone_in, szone = 0, block_id = 0;
   int pageLifetime = get_page_lifetime(key, len);
+  int *can_zone = (int *)malloc(sizeof(int) * zone_number);
   for (int i = 0; i < zone_number; i++)
     if (zone_lifetime_map[i] > 0) szone++;
   for (int i = 0; i < zone_number; i++) {
@@ -239,30 +245,35 @@ void ZNS_Simulation::myInsert(char *page, int *key, int len) {
       break;
     }
   }
-  if (szone < sz * zone_number) {
+  if (szone < sz * zone_number || pageLifetime == 0) {
     get_zone_empty_rate();
     float max = 0;
     for (int i = 0; i < zone_number; i++) {
-      if (max < empty_rate[i]) {
+      if (max < empty_rate[i] && gc_queue[i] == 0) {
         zone_in = i;
         max = empty_rate[i];
       }
     }
   } else {
-    static int hhh = 0;
-    cout << hhh++ << endl;
-    float delta = 100000;
-    for (int i = 0; i < zone_number; i++) {
-      if (delta > fabs(pageLifetime - zone_lifetime_map[i]) &&
-          gc_queue[i] == 0) {
-        zone_in = i;
-        delta = fabs(pageLifetime - zone_lifetime_map[i]);
+    for (int j = 0; j < gl; j++) {
+      float delta = 100000;
+      for (int i = 0; i < zone_number; i++) {
+        if (delta > fabs(pageLifetime - zone_lifetime_map[i]) &&
+            can_zone[i] == 0 && gc_queue[i] == 0) {
+          zone_in = i;
+          delta = fabs(pageLifetime - zone_lifetime_map[i]);
+        }
       }
+      can_zone[zone_in] = 1;
+    }
+    int er = 0;
+    for (int j = 0; j < zone_number; j++) {
+      if (can_zone[j] == 1 && empty_rate[j] > er) zone_in = j;
     }
   }
   int flag = write_block(page, zone_in, BLOCK_SIZE, &block_id);
   assert(flag == 1);
-  refreshLifetime(zone_in, key, len, block_id, pageLifetime);
+  refreshLifetime(zone_in, key, len, block_id, pageLifetime, OP);
   myGcDetect();
 }
 
@@ -286,14 +297,15 @@ void ZNS_Simulation::myUpdate_Delete(int key_op, int value_size_op) {
   if (value_size_op == 0) key_index[key_op] = -1;
 
   int cap = 0, cnt = 0, flag = 0;
-  int key[MAX_KV_PER_BLOCK], value_size[MAX_KV_PER_BLOCK];
+  int key[MAX_KV_PER_BLOCK] = {}, value_size[MAX_KV_PER_BLOCK] = {};
 
   addr = 0;
-  while (addr <= 4096 - (int)sizeof(int) * 4) {
+  while (addr <= 4096) {
     memcpy(&key_size_read, buf + addr, sizeof(int));
-    if (key_size_read != sizeof(int) && cnt > 0) {
+    if ((key_size_read != sizeof(int) && cnt > 0) ||
+        (addr > 4096 - (int)sizeof(int) * 4)) {
       char *pages2zns = data2page(key, value_size, cnt);
-      myInsert(pages2zns, key, cnt);
+      myInsert(pages2zns, key, cnt, MODIFY_KV);
       break;
     }
     addr += sizeof(int);
@@ -309,13 +321,14 @@ void ZNS_Simulation::myUpdate_Delete(int key_op, int value_size_op) {
 
     if (key_read == key_op) {
       value_size_read = value_size_op;
+      key_lifetime_map[key_op]++;
       flag = 1;
     }
 
     if (cap + sizeof(int) * 3 + value_size_read > BLOCK_SIZE &&
         value_size_read != 0) {
       char *pages2zns = data2page(key, value_size, cnt);
-      myInsert(pages2zns, key, cnt);
+      myInsert(pages2zns, key, cnt, MODIFY_KV);
       cnt = cap = 0;
     }
     if (value_size_read != 0) {
@@ -329,94 +342,75 @@ void ZNS_Simulation::myUpdate_Delete(int key_op, int value_size_op) {
   free(buf);
 }
 
-// void ZNS_Simulation::GC_insert(char *page, int lifetime) {
-//   int zone_in, szone = 0, block_id = 0;
-//   for (int i = 0; i < zone_number; i++)
-//     if (zone_lifetime_map[i] < 0) szone++;
-//   for (int i = 0; i < zone_number; i++) {
-//     if (gc_queue[i] == 0) {
-//       zone_in = i;
-//       break;
-//     }
-//   }
-//   if (szone < sz * zone_number) {
-//     get_zone_empty_rate();
-//     float max = 0;
-//     for (int i = 0; i < zone_number; i++) {
-//       if (max < empty_rate[i]) {
-//         zone_in = i;
-//         max = empty_rate[i];
-//       }
-//     }
-//   } else {
-//     float delta = 100000;
-//     for (int i = 0; i < zone_number; i++) {
-//       if (delta > fabs(lifetime - zone_lifetime_map[i]) && gc_queue[i] == 0)
-//       {
-//         zone_in = i;
-//         delta = fabs(lifetime - zone_lifetime_map[i]);
-//       }
-//     }
-//   }
-//   int flag = write_block(page, zone_in, BLOCK_SIZE, block_id);
-//   assert(flag == 1);
-//   page_lifetime_map[block_id] = lifetime;
-//   int cnt = 0;
-//   zone_lifetime_map[zone_in] = 0;
-//   for (int i = 0; i < block_per_zone; i++) {
-//     if (page_lifetime_map[zone_in * block_per_zone + i] > 0) {
-//       zone_lifetime_map[zone_in] +=
-//           page_lifetime_map[zone_in * block_per_zone + i];
-//       cnt++;
-//     }
-//   }
-//   zone_lifetime_map[zone_in] /= cnt;
-// }
-
 void ZNS_Simulation::myGarbageCollection() {
-  cout << "hhhhhhhh" << endl;
-  int ret, fd = zns_sim->get_dev_id();
+  for (int i = 0; i < zone_number; i++) cout << gc_queue[i] << " ";
+  cout << endl;
+  gc_flag = 1;
+  int ret, fd = zns_sim->get_dev_id(), block_ofst = 0;
   unsigned long long offset;
   for (int i = 0; i < zone_number; i++) {
     if (gc_queue[i] == 1) {
-      for (int j = 0; j < block_per_zone; j++) {
-        if (block_valid_map[i * block_per_zone + j] == BLOCK_VALID) {
-          offset = (i * block_per_zone + j) * BLOCK_SIZE;
-          char *buf = reinterpret_cast<char *>(memalign(4096, BLOCK_SIZE));
-          assert(buf != nullptr);
-          ret = pread(fd, &buf, BLOCK_SIZE, offset);
-          assert(ret == sizeof(int));
+      block_ofst = 0;
+      while (block_valid_map[i * block_per_zone + block_ofst] != BLOCK_VALID)
+        block_ofst++;
+      offset = (i * block_per_zone + block_ofst) * BLOCK_SIZE;
+      char *buf = reinterpret_cast<char *>(memalign(4096, BLOCK_SIZE));
+      assert(buf != nullptr);
+      ret = pread(fd, buf, BLOCK_SIZE, offset);
+      assert(ret == BLOCK_SIZE);
 
-          int cap = 0, cnt = 0, key_size_read, key_read, value_size_read;
-          char value[BLOCK_SIZE];
-          int key[MAX_KV_PER_BLOCK], value_size[MAX_KV_PER_BLOCK];
+      int cap = 0, cnt = 0, key_size_read, key_read, value_size_read;
+      char value[BLOCK_SIZE];
+      int key[MAX_KV_PER_BLOCK], value_size[MAX_KV_PER_BLOCK];
 
-          int addr = 0;
-          while (addr < 4096 - (int)sizeof(int) * 4) {
-            memcpy(&key_size_read, buf + addr, sizeof(int));
-            if (key_size_read != sizeof(int) && cnt > 0) {
+      int addr = 0;
+      while (1) {
+        memcpy(&key_size_read, buf + addr, sizeof(int));
+        if ((key_size_read != sizeof(int)) ||
+            (addr > 4096 - (int)sizeof(int) * 4)) {
+          block_ofst++;
+          while (block_valid_map[i * block_per_zone + block_ofst] !=
+                 BLOCK_VALID)
+            block_ofst++;
+          if (block_ofst >= block_per_zone) {
+            if (cnt != 0) {
               char *pages2zns = data2page(key, value_size, cnt);
-              myInsert(pages2zns, key, cnt);
-              break;
+              myInsert(pages2zns, key, cnt, MODIFY_KV);
+              cnt = cap = 0;
             }
-            addr += sizeof(int);
-
-            memcpy(&key_read, buf + addr, key_size_read);
-            addr += key_size_read;
-
-            memcpy(&value_size_read, buf + addr, sizeof(int));
-            addr += sizeof(int);
-
-            memcpy(value, buf + addr, value_size_read);
-            addr += value_size_read;
-
-            key[cnt] = key_read;
-            value_size[cnt] = value_size_read;
-            cnt++;
-            cap += sizeof(int) * 3 + value_size_read;
+            break;
           }
+          offset = (i * block_per_zone + block_ofst) * BLOCK_SIZE;
+          buf = reinterpret_cast<char *>(memalign(4096, BLOCK_SIZE));
+          assert(buf != nullptr);
+          ret = pread(fd, buf, BLOCK_SIZE, offset);
+          assert(ret == BLOCK_SIZE);
+          addr = 0;
+          memcpy(&key_size_read, buf + addr, sizeof(int));
         }
+        addr += sizeof(int);
+
+        memcpy(&key_read, buf + addr, key_size_read);
+        addr += key_size_read;
+
+        memcpy(&value_size_read, buf + addr, sizeof(int));
+        addr += sizeof(int);
+
+        memcpy(value, buf + addr, value_size_read);
+        addr += value_size_read;
+
+        if (cap + sizeof(int) * 3 + value_size_read > BLOCK_SIZE &&
+            value_size_read != 0) {
+          char *pages2zns = data2page(key, value_size, cnt);
+          myInsert(pages2zns, key, cnt, MODIFY_KV);
+          cnt = cap = 0;
+        }
+        key[cnt] = key_read;
+        value_size[cnt] = value_size_read;
+        cnt++;
+        cap += sizeof(int) * 3 + value_size_read;
       }
+      gc_queue[i] = 0;
       zone_sim[i].reset_zone();
       zone_lifetime_map[i] = -1;
       for (int j = 0; j < block_per_zone; j++) {
@@ -425,15 +419,21 @@ void ZNS_Simulation::myGarbageCollection() {
       }
     }
   }
+  gc_flag = 0;
 }
 
 void ZNS_Simulation::print_info() {
   get_zone_empty_rate();
   get_zone_garbage_rate();
-  cout << "\tzone\tempty rate\tgarbage rate\tzone lifetime\t" << endl;
-  for (int i = 0; i < zone_number; i++)
-    cout << "\t" << i << "\t" << empty_rate[i] << "\t" << garbage_rate[i]
-         << "\t" << zone_lifetime_map[i] << "\t" << endl;
+  cout << left;
+  cout << setw(6) << "zone" << setw(10) << "em %" << setw(10) << "gb %"
+       << setw(10) << "zone lt" << setw(10) << "zone var" << endl;
+  for (int i = 0; i < zone_number; i++) {
+    cout << setprecision(3) << fixed;
+    cout << setw(6) << i << setw(10) << empty_rate[i] << setw(10)
+         << garbage_rate[i] << setw(10) << zone_lifetime_map[i] << setw(10)
+         << lifetimeVarience(i) << endl;
+  }
 }
 
 void ZNS_Simulation::test() {

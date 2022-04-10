@@ -10,6 +10,7 @@ class ZNS_Simulation {
   ZONE_SIM* zone_sim;
   BLOCK_SIM* block_sim;
   Workload_Creator* workload;
+  int gc_flag;
   int zone_number;
   int block_number;
   int block_per_zone;
@@ -35,9 +36,9 @@ class ZNS_Simulation {
   // ZNS_aware_alorithm
   float lifetimeVarience(int zone_id);
   int get_page_lifetime(int* key, int len);
-  void refreshLifetime(int zone_id, int* key, int len, int block_id, int pageLifetime);
+  void refreshLifetime(int zone_id, int* key, int len, int block_id, int pageLifetime, int OP);
   void GC_insert(char *page, int lifetime);
-  void myInsert(char* page, int* key, int len);
+  void myInsert(char* page, int* key, int len, int OP);
   void myUpdate_Delete(
       int key,
       int value_size);  // delete: value_size=0, update: value_size != 0
