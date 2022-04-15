@@ -1,3 +1,6 @@
+#ifndef workload_H
+#define workload_H
+
 #include <malloc.h>
 #include <string.h>
 
@@ -12,3 +15,5 @@ class Workload_Creator {
   Workload_Creator(int length);
   Workload_Creator(int length, float hot_data_rate, float update_rate);
 };
+
+#endif

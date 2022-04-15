@@ -1,11 +1,11 @@
-#ifndef zns_simulation_H
-#define zns_simulation_H
+#ifndef compare_H
+#define compare_H
 
 #include "parameter.h"
 #include "workload.h"
 #include "zns_controller.h"
 
-class ZNS_Simulation {
+class Compare {
   ZNS_SIM* zns_sim;
   ZONE_SIM* zone_sim;
   BLOCK_SIM* block_sim;
@@ -26,7 +26,7 @@ class ZNS_Simulation {
   float* garbage_rate;
 
  public:
-  ZNS_Simulation();
+  Compare();
   void initialize();
   void generate_workload(int seq_ram);
   int write_block(char* page_in, int zone_id, int size, int *block_id);
@@ -36,17 +36,17 @@ class ZNS_Simulation {
   void get_zone_empty_rate();
   void request_workload();
 
-  // ZNS_aware_alorithm
+  // Compare_alorithm
   float lifetimeVarience(int zone_id);
   int get_page_lifetime(int* key, int len);
   void refreshLifetime(int zone_id, int* key, int len, int block_id, int pageLifetime, int OP);
   void GC_insert(char *page, int lifetime);
-  void myInsert(char* page, int* key, int len, int OP);
-  void myUpdate_Delete(
+  void comInsert(char* page, int* key, int len, int OP);
+  void comUpdate_Delete(
       int key,
       int value_size);  // delete: value_size=0, update: value_size != 0
-  void myGarbageCollection();
-  void myGcDetect();
+  void comGarbageCollection();
+  void comGcDetect();
 
   // test
   void test();

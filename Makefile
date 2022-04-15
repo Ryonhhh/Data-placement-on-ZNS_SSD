@@ -2,12 +2,12 @@ CC      =g++
 CFLAGS  =-g -Wall -static
 LDFLAGS =-L /home/wht/Data-placement-on-ZNS_SSD/libzbd-2.0.3/lib/.libs/
 LIBS    =-lzbd
-OBJS    =main.o zns_controller.o zns_simulation.o workload.o
+OBJS    =main.o zns_controller.o workload.o compare.o
 TARGET  =main
 
 all: main
 
-main: main.cc zns_controller.cc zns_simulation.cc workload.cc
+main: main.cc zns_controller.cc workload.cc compare.cc
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS) $(LIBS)
 
 
