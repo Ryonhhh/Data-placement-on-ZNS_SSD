@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <malloc.h>
 #include <sys/stat.h>
+#include <ctime>
 
 #include <iostream>
 

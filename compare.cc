@@ -232,9 +232,8 @@ void Compare::comGcDetect() {
     er += empty_rate[i] / zone_number;
     gr += garbage_rate[i] / zone_number;
     if (gc_queue[i] == 0) {
-      if (garbage_rate[i] > sg) {
-        gc_queue[i] = 1;
-      } else if (empty_rate[i] < se && lifetimeVarience(i) > sl) {
+      if (empty_rate[i] < se &&
+          (garbage_rate[i] > sg || lifetimeVarience(i) > sl)) {
         gc_queue[i] = 1;
       }
     }
@@ -258,54 +257,7 @@ void Compare::comGcDetect() {
 }
 
 void Compare::comInsert(char *page, int *key, int len, int OP) {
-  /*---polling distribution---*/
-  // int block_id = 0;
-  // static int zone_in = zone_number;
-  // zone_in = (zone_in + 1) % zone_number;
-  // get_zone_conds();
 
-  // int pageLifetime = get_page_lifetime(key, len);
-  // while (gc_queue[zone_in] != 0 || zone_conds[zone_in] == ZBD_ZONE_COND_FULL)
-  //   zone_in = (zone_in + 1) % zone_number;
-
-  // int flag = write_block(page, zone_in, BLOCK_SIZE, &block_id);
-  // assert(flag == 1);
-  // refreshLifetime(zone_in, key, len, block_id, pageLifetime, OP);
-  // comGcDetect();
-
-  /*---random distribution---*/
-  // int block_id = 0;
-  // int zone_in = rand() % zone_number;
-  // get_zone_conds();
-
-  // int pageLifetime = get_page_lifetime(key, len);
-  // while (gc_queue[zone_in] != 0 || zone_conds[zone_in] == ZBD_ZONE_COND_FULL)
-  //   zone_in = rand() % zone_number;
-
-  // int flag = write_block(page, zone_in, BLOCK_SIZE, &block_id);
-  // assert(flag == 1);
-  // refreshLifetime(zone_in, key, len, block_id, pageLifetime, OP);
-  // comGcDetect();
-
-  /*---equal distribution---*/
-  int block_id = 0;
-  int zone_in = rand() % zone_number;
-  get_zone_conds();
-  get_zone_empty_rate();
-
-  int pageLifetime = get_page_lifetime(key, len);
-  float max = 0;
-  for (int i = 0; i < zone_number; i++)
-    if (gc_queue[i] == 0 && zone_conds[i] != ZBD_ZONE_COND_FULL &&
-        max < empty_rate[i]) {
-      zone_in = i;
-      max = empty_rate[i];
-    }
-
-  int flag = write_block(page, zone_in, BLOCK_SIZE, &block_id);
-  assert(flag == 1);
-  refreshLifetime(zone_in, key, len, block_id, pageLifetime, OP);
-  comGcDetect();
 }
 
 void Compare::comUpdate_Delete(int key_op, int value_size_op) {

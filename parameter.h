@@ -7,12 +7,14 @@
 #define sg 0.5 //threshold of zone's garbage rate
 #define se 0.4 //threshold of zone's empty rate
 #define sz 0.8 //threshold of lifetime_recorded zone's rate
-#define sl 1000 ////threshold of zone's lifetime varience
+#define sl 5000 ////threshold of zone's lifetime varience
 #define gl 2  // the maximun length of gc queue
-#define MAX_KEY 100000
+#define MAX_KEY (2<<19)
 #define MAX_VALUE_SIZE 2048
+#define WORKLOAD_SHIFT 5
+#define RECENT_MODIFY 1000
 #define MAX_WORKLOAD 100000
-#define HOT_DATA_RATE 0.2
+#define HOT_DATA_RATE 0.05
 #define UPDATE_RATE 0.4
 
 enum WORKLOAD { SEQ, RAM };
