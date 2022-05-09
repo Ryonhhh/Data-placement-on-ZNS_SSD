@@ -39,7 +39,7 @@ Workload_Creator::Workload_Creator(int length, float hot_data_rate,
             << ((rand() % MAX_VALUE_SIZE / 4) + 1) * 4 << endl;
   }
   for (int k = 0; k < WORKLOAD_SHIFT; k++) {
-    int center_shift = rand() % (MAX_KEY - hot_data);
+    int center_shift = k * (MAX_KEY / WORKLOAD_SHIFT);
     for (int i = 0; i < length; i++) {
       if ((float)(rand() % 100 + 1) / 100 > update_rate) {
         key = rand() % MAX_KEY;

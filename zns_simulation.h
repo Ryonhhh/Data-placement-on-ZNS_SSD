@@ -5,11 +5,16 @@
 #include "workload.h"
 #include "zns_controller.h"
 
+#include <fstream>
+#include <iomanip>
+#include <sstream>
+
 class ZNS_Simulation {
   ZNS_SIM* zns_sim;
   ZONE_SIM* zone_sim;
   BLOCK_SIM* block_sim;
   Workload_Creator* workload;
+  ofstream outFile;
   int gc_flag;
   int gc_num;
   int zone_number;

@@ -145,11 +145,19 @@ void ZNS_Simulation::request_workload(clock_t start) {
   int cap = 0, OP, key_read, value_size_read, cnt = 0;
   int key[MAX_KV_PER_BLOCK], value_size[MAX_KV_PER_BLOCK];
   int load = 0;
-  char OUT_PATH[] = "./aware_nolifetime";
+  string OUT_PATH = "./data/aware_" + std::to_string(sg) + "_" +
+                    std::to_string(se) + "_" + std::to_string(sl) + "_" +
+                    std::to_string(gl);
+  // string OUT_PATH = "./data/aware_nolifetime" + std::to_string(sg) + "_" +
+  //                   std::to_string(se) + "_" + std::to_string(sl) + "_" +
+  //                   std::to_string(gl);
+  // string OUT_PATH = "./data/equal" + std::to_string(sg) + "_" +
+  //                   std::to_string(se) + "_" + std::to_string(sl) + "_" +
+  //                   std::to_string(gl);
+
   clock_t period;
 
   ifstream inFile;
-  ofstream outFile;
   outFile.open(OUT_PATH, ios::out);
   inFile.open(FILE_PATH, ifstream::in);
   while (inFile.good()) {
@@ -256,8 +264,8 @@ void ZNS_Simulation::myGcDetect() {
   get_zone_garbage_rate();
   for (int i = 0; i < (int)zone_number; i++) {
     if (gc_queue[i] == 0 && empty_rate[i] < se &&
-        //(garbage_rate[i] > sg || lifetimeVarience(i) > sl) && gc_flag == 0) {
-        (garbage_rate[i] > sg || lifetimeVarience(i) < 0) && gc_flag == 0) {  
+        (garbage_rate[i] > sg || lifetimeVarience(i) > sl) && gc_flag == 0) {
+        //(garbage_rate[i] > sg || lifetimeVarience(i) < 0) && gc_flag == 0) {  
       gc_queue[i] = 1;
       gczone = 0;
       for (int j = 0; j < (int)zone_number; j++) gczone += gc_queue[j];
@@ -443,6 +451,21 @@ void ZNS_Simulation::myGarbageCollection() {
     if (gc_queue[i] == 1) cout << "zone " << i << " ";
   cout << endl;
   print_info();
+  outFile << "garbage collection " << gc_num << ": ";
+  for (int i = 0; i < zone_number; i++)
+    if (gc_queue[i] == 1) cout << "zone " << i << " ";
+  outFile << endl;
+  get_zone_empty_rate();
+  get_zone_garbage_rate();
+  outFile << left;
+  outFile << setw(6) << "zone" << setw(10) << "em %" << setw(10) << "gb %"
+          << setw(10) << "zone lt" << setw(10) << "zone var" << endl;
+  for (int i = 0; i < zone_number; i++) {
+    outFile << setprecision(3) << fixed;
+    outFile << setw(6) << i << setw(10) << empty_rate[i] << setw(10)
+            << garbage_rate[i] << setw(10) << zone_lifetime_map[i] << setw(10)
+            << lifetimeVarience(i) << endl;
+  }
   gc_flag = 1;
   int ret, fd = zns_sim->get_dev_id(), block_ofst = 0;
   unsigned long long offset;
@@ -479,8 +502,7 @@ void ZNS_Simulation::myGarbageCollection() {
             break;
           }
           offset = (i * block_per_zone + block_ofst) * BLOCK_SIZE;
-          free(buf);
-          buf = reinterpret_cast<char *>(memalign(4096, BLOCK_SIZE));
+          memset(buf, 0, BLOCK_SIZE);
           assert(buf != nullptr);
           ret = pread(fd, buf, BLOCK_SIZE, offset);
           assert(ret == BLOCK_SIZE);
@@ -516,6 +538,7 @@ void ZNS_Simulation::myGarbageCollection() {
         block_lifetime_map[i * block_per_zone + j] = -1;
         block_valid_map[i * block_per_zone + j] = BLOCK_EMPTY;
       }
+      free(buf);
     }
   }
   gc_flag = 0;
